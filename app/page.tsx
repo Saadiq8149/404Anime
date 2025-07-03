@@ -171,7 +171,8 @@ export default function AnimeStreamingApp() {
   const [searchResults, setSearchResults] = useState<{ id: number; title: string; episodes: number; year: string; image: string; season: string}[]>([])
   const [episodes, setEpisodes] = useState<{ id: number; number: number; title: string }[]>([])
   const [torrents, setTorrents] = useState<{ id: number; filename: string; size: string; quality: string; trusted: string; magnet: string}[]>([])
-  const [magnet, setMagnet] = useState<string>("")
+  const [streamUrl, setStreamUrl] = useState<string>("")
+  const [downloadProgress, setDownloadProgress] = useState(0)
 
   useEffect(() => {
     if (searchQuery.length > 0) {
@@ -205,12 +206,37 @@ export default function AnimeStreamingApp() {
     }
   }
 
-  const handleTorrentSelect = (torrent: any) => {
-    setShowTorrentModal(false)
-    setMagnet(torrent.magnet)
+  const handleTorrentSelect = async (torrent: any) => {
+    const filename = `${selectedAnime.id}-${selectedEpisode.number}`
+    const url = BASE_BACKEND_URL + "stream/torrent?url=" + encodeURIComponent(torrent.magnet) + `&filename=${filename}`
+
+    const res = await axios.get(url)
+    const key = res.data.key
+
     setAppState("streaming")
-    setIsPlaying(true)
+
+    // Poll for progress
+    const interval = setInterval(async () => {
+      const progRes = await axios.get(BASE_BACKEND_URL + "stream/progress", {
+        params: { key }
+      })
+
+      const status = progRes.data
+
+      if (status.status === "done") {
+        clearInterval(interval)
+        setStreamUrl(BASE_BACKEND_URL + status.file)
+        setIsPlaying(true)
+      } else if (status.status === "downloading") {
+        setDownloadProgress(Math.floor(status.progress || 0))
+      } else if (status.status === "error") {
+        clearInterval(interval)
+        alert("Download failed: " + status.detail)
+        setAppState("home")
+      }
+    }, 1000)
   }
+
 
   const handleBackToHome = () => {
     setAppState("home")
@@ -234,7 +260,7 @@ export default function AnimeStreamingApp() {
       }
     }).then(response => {
       if (isAuto) {
-        setMagnet(response.data[0].magnet)
+        handleTorrentSelect(response.data[0])
       } else {
         setTorrents(response.data)
       }
@@ -270,18 +296,22 @@ export default function AnimeStreamingApp() {
 
       <AnimatePresence mode="wait">
         {appState === "streaming" ? (
-          <StreamingView
-            key="streaming"
-            anime={selectedAnime}
-            episode={selectedEpisode}
-            isPlaying={isPlaying}
-            setIsPlaying={setIsPlaying}
-            volume={volume}
-            setVolume={setVolume}
-            progress={progress}
-            setProgress={setProgress}
-            onBack={handleBackToEpisodes}
-          />
+        <StreamingView
+          anime={selectedAnime}
+          episode={selectedEpisode}
+          isPlaying={isPlaying}
+          setIsPlaying={setIsPlaying}
+          volume={volume}
+          setVolume={setVolume}
+          progress={progress}
+          setProgress={setProgress}
+          onBack={() => {
+            setAppState("home")
+            setStreamUrl("")
+          }}
+          streamUrl={streamUrl}
+          downloadProgress={downloadProgress}
+        />
         ) : (
           <motion.div
             key="main"

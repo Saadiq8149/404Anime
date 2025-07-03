@@ -217,6 +217,19 @@ def get_torrents_by_search(title: str, romaji: str, episode: int, season: str = 
             torrent["quality"] = "Unknown"
         torrent["trusted"] = True 
         torrent["id"] = index
+        # trackers = "&tr=" + "&tr=".join([
+        #     "udp://tracker.opentrackr.org:1337/announce",
+        #     "udp://tracker.openbittorrent.com:6969/announce",
+        #     "udp://tracker.openbittorrent.com:80/announce",
+        #     "udp://tracker.leechers-paradise.org:6969/announce",
+        #     "udp://9.rarbg.to:2710/announce",
+        #     "udp://tracker.internetwarriors.net:1337/announce",
+        #     "udp://exodus.desync.com:6969/announce",
+        #     "udp://tracker.torrent.eu.org:451/announce"
+        # ])
+
+        # torrent["magnet"] = f"magnet:?xt=urn:btih:{torrent['info_hash']}&dn={torrent['title']}{trackers}"
+
         # print(f"✅ {torrent["title"]}\n🔗 {torrent["magnet"]}\n Seeders: {torrent["seeders"]}\n Size: {torrent["size"]}\n")
 
     return torrents
@@ -240,7 +253,8 @@ def get_torrents_for_query(query: str, torrents):
             magnet = item.find("link").text
             seeders = int(item.find("nyaa:seeders", ns).text)
             size = item.find("nyaa:size", ns).text
-            torrents.append({"title": title, "magnet": magnet, "seeders": seeders, "size": size})
+            info_hash = item.find("nyaa:infoHash", ns).text
+            torrents.append({"title": title, "magnet": magnet, "seeders": seeders, "size": size, "info_hash": info_hash})
             # print(f"✅ {title}\n🔗 {magnet}\n Seeders: {seeders}\n Size: {size}\n")
     else:
         print("Error Occurred")

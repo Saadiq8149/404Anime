@@ -1,69 +1,56 @@
 "use client"
 
-import { useEffect, useRef } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { ChevronLeft, Monitor, Pause, Play, SkipBack, SkipForward, Subtitles, Volume2 } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { motion } from "framer-motion"
+import {
+  ChevronLeft, Monitor, Pause, Play, SkipBack,
+  SkipForward, Subtitles, Volume2
+} from "lucide-react"
 import { Slider } from "./ui/slider"
 import { Button } from "./ui/button"
-const WebTorrent = require("webtorrent")
 
 export default function StreamingView({
-  anime,
-  episode,
-  isPlaying,
-  setIsPlaying,
-  volume,
-  setVolume,
-  progress,
-  setProgress,
-  onBack,
-  magnet
+  anime, episode, isPlaying, setIsPlaying, volume, setVolume,
+  progress, setProgress, onBack, streamUrl, downloadProgress
 }: any) {
   const videoRef = useRef<HTMLVideoElement>(null)
-  const clientRef = useRef<any>(null)
-
-  const magnetLink = magnet
-
-  useEffect(() => {
-    if (!magnetLink || !videoRef.current) return
-
-    const client = new WebTorrent()
-    clientRef.current = client
-
-    client.add(magnetLink, (torrent: any) => {
-      const file = torrent.files.find((file: any) => file.name.endsWith(".mp4") || file.name.endsWith(".mkv"))
-      if (file) {
-        file.renderTo(videoRef.current!)
-      }
-    })
-
-    return () => {
-      client.destroy()
-    }
-  }, [magnetLink])
+  const [duration, setDuration] = useState<number>(0)
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black z-50">
-      {/* Video Player Area */}
       <div className="relative w-full h-full flex items-center justify-center">
-        <video
-          ref={videoRef}
-          controls
-          autoPlay
-          className="w-full h-full object-contain bg-black"
-          onPlay={() => setIsPlaying(true)}
-          onPause={() => setIsPlaying(false)}
-          onTimeUpdate={(e) => {
-            const current = (e.target as HTMLVideoElement).currentTime
-            setProgress([Math.floor(current)])
-          }}
-          onVolumeChange={(e) => {
-            const vol = (e.target as HTMLVideoElement).volume
-            setVolume([Math.floor(vol * 100)])
-          }}
-        />
+        {!streamUrl ? (
+          <div className="text-white text-center space-y-2">
+            <p>Downloading torrent... {downloadProgress}%</p>
+            <div className="w-1/2 mx-auto bg-gray-700 rounded-full h-2">
+              <div className="bg-purple-500 h-2 rounded-full" style={{ width: `${downloadProgress}%` }} />
+            </div>
+          </div>
+        ) : (
+          <video
+            ref={videoRef}
+            src={streamUrl}
+            controls
+            autoPlay
+            className="w-full h-full object-contain bg-black"
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onTimeUpdate={(e) => {
+              const current = (e.target as HTMLVideoElement).currentTime
+              setProgress([Math.floor(current)])
+            }}
+            onVolumeChange={(e) => {
+              const vol = (e.target as HTMLVideoElement).volume
+              setVolume([Math.floor(vol * 100)])
+            }}
+            onLoadedMetadata={(e) => {
+              const dur = (e.target as HTMLVideoElement).duration
+              setDuration(Math.floor(dur))
+            }}
+          />
+        )}
 
-        {/* Top Controls */}
+        {/* Top Bar */}
         <div className="absolute top-0 left-0 right-0 bg-gradient-to-b from-black/80 to-transparent p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -88,10 +75,10 @@ export default function StreamingView({
           </div>
         </div>
 
-        {/* Bottom Controls */}
+        {/* Bottom Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
           <div className="space-y-4">
-            <Slider value={progress} onValueChange={setProgress} max={100} step={1} className="w-full" />
+            <Slider value={progress} onValueChange={setProgress} max={duration || 100} step={1} className="w-full" />
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <Button variant="ghost" size="icon">
@@ -131,7 +118,8 @@ export default function StreamingView({
                   />
                 </div>
                 <span className="text-sm text-gray-400">
-                  {Math.floor(progress[0] / 60)}:{(progress[0] % 60).toString().padStart(2, "0")} / ??
+                  {Math.floor(progress[0] / 60)}:{(progress[0] % 60).toString().padStart(2, "0")} /{" "}
+                  {Math.floor(duration / 60)}:{(duration % 60).toString().padStart(2, "0")}
                 </span>
               </div>
             </div>

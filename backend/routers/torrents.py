@@ -1,7 +1,7 @@
 from fastapi import APIRouter
 from services.nyaa import get_torrents_by_search
 
-router = APIRouter(prefix="/torrent", tags=["Anime"])
+router = APIRouter(prefix="/torrent", tags=["Torrent"])
 
 @router.get("/search")
 async def search(title: str, romaji: str, episode: int, season: str = ""):

@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from routers import anime, torrents
+from routers import anime, torrents, stream
 from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
@@ -12,6 +12,7 @@ app.add_middleware(
 )
 app.include_router(anime.router)
 app.include_router(torrents.router)
+app.include_router(stream.router)
 
 @app.get("/")
 async def root():
